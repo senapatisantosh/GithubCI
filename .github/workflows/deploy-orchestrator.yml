@@ -34,84 +34,13 @@ on:
         default: latest
 
 jobs:
-  build-matrix:
-    name: Build matrix
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.build.outputs.matrix }}
-    steps:
-      - id: build
-        shell: bash
-        run: |
-          instance="${{ github.event.inputs.instance }}"
-          product_type="${{ github.event.inputs.product_type }}"
-          versions_input="${{ github.event.inputs.product_versions }}"
-
-          ALL_PRODUCTS=("Product1" "Product2")
-
-          declare -A version_map
-
-          is_kv=false
-          if [[ "$versions_input" == *":"* ]]; then
-            is_kv=true
-            IFS=',' read -ra PAIRS <<< "$versions_input"
-            for p in "${PAIRS[@]}"; do
-              key="${p%%:*}"
-              val="${p##*:}"
-              key="$(echo "$key" | xargs)"
-              val="$(echo "$val" | xargs)"
-              [[ -n "$key" && -n "$val" ]] && version_map["$key"]="$val"
-            done
-          fi
-
-          json="["
-
-          if [[ "$product_type" == "All" ]]; then
-            if [[ "$is_kv" == true ]]; then
-              for prod in "${!version_map[@]}"; do
-                v="${version_map[$prod]}"
-                json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
-              done
-            else
-              for prod in "${ALL_PRODUCTS[@]}"; do
-                if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
-                  v="latest"
-                else
-                  v="$versions_input"
-                fi
-                json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
-              done
-            fi
-          else
-            v=""
-            if [[ "$is_kv" == true ]]; then
-              v="${version_map[$product_type]}"
-              if [[ -z "$v" ]]; then
-                v="latest"
-              fi
-            else
-              if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
-                v="latest"
-              else
-                v="$versions_input"
-              fi
-            fi
-
-            json+="{\"instance\":\"$instance\",\"product\":\"$product_type\",\"version\":\"$v\"},"
-          fi
-
-          json="${json%,}]"
-          echo "Matrix JSON: $json"
-          echo "matrix=$json" >> "$GITHUB_OUTPUT"
-
   deploy:
     name: Deploy via reusable workflow
-    needs: build-matrix
     strategy:
       matrix:
-        include: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+        instance: [ ${{ github.event.inputs.instance }} ]
     uses: ./.github/workflows/deploy-reusable.yml
     with:
-      instance_name:   ${{ matrix.instance }}
-      product_type:    ${{ matrix.product }}
-      product_version: ${{ matrix.version }}
+      instance_name:    ${{ matrix.instance }}
+      product_type:     ${{ github.event.inputs.product_type }}
+      product_versions: ${{ github.event.inputs.product_versions }}

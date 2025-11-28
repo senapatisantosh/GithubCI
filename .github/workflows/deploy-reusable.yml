@@ -9,17 +9,51 @@ on:
       product_type:
         required: true
         type: string
-      product_version:
+      product_versions:
         required: true
         type: string
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    steps:
-      - name: Show inputs (replace with real deploy steps)
-        run: |
-          echo "Instance: ${{ inputs.instance_name }}"
-          echo "Product:  ${{ inputs.product_type }}"
-          echo "Version:  ${{ inputs.product_version }}"
+    env:
+      INSTANCE:       ${{ inputs.instance_name }}
+      PRODUCT_TYPE:   ${{ inputs.product_type }}
+      VERSIONS_INPUT: ${{ inputs.product_versions }}
 
+    steps:
+      - name: Common pre-steps
+        run: |
+          echo "Common setup for instance: $INSTANCE"
+
+      - name: Resolve Product1 version
+        id: v_product1
+        if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product1' }}
+        uses: ./.github/actions/ResolveVersion
+        with:
+          product:        Product1
+          versions_input: ${{ env.VERSIONS_INPUT }}
+
+      - name: Deploy Product1
+        if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product1' }}
+        run: |
+          VERSION="${{ steps.v_product1.outputs.version }}"
+          echo "Deploying Product1 version $VERSION to $INSTANCE"
+
+      - name: Resolve Product2 version
+        id: v_product2
+        if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product2' }}
+        uses: ./.github/actions/ResolveVersion
+        with:
+          product:        Product2
+          versions_input: ${{ env.VERSIONS_INPUT }}
+
+      - name: Deploy Product2
+        if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product2' }}
+        run: |
+          VERSION="${{ steps.v_product2.outputs.version }}"
+          echo "Deploying Product2 version $VERSION to $INSTANCE"
+
+      - name: Common post-steps
+        run: |
+          echo "Post-deploy tasks for instance: $INSTANCE"

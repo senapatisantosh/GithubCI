@@ -1,0 +1,46 @@
+name: Resolve product version
+description: Resolve effective version for a product from a KV string or direct version
+
+inputs:
+  product:
+    description: "Product name (e.g., Product1)"
+    required: true
+  versions_input:
+    description: >
+      Version string:
+      - "latest"
+      - "1.22"
+      - "Product1:1.22,Product2:1.23"
+    required: true
+
+outputs:
+  version:
+    description: "Resolved version for the given product"
+    value: ${{ steps.resolve.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    - id: resolve
+      shell: bash
+      run: |
+        prod="${{ inputs.product }}"
+        versions="${{ inputs.versions_input }}"
+        version=""
+
+        if [[ "$versions" =~ : ]]; then
+          if [[ "$versions" =~ (^|,)[[:space:]]*$prod:([^,]+) ]]; then
+            version="${BASH_REMATCH[2]}"
+          else
+            version="latest"
+          fi
+        else
+          if [[ -z "$versions" || "$versions" == "latest" ]]; then
+            version="latest"
+          else
+            version="$versions"
+          fi
+        fi
+
+        echo "Resolved version for $prod: $version"
+        echo "version=$version" >> "$GITHUB_OUTPUT"
