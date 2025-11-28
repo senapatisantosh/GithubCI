@@ -1,0 +1,25 @@
+name: Deploy Reusable
+
+on:
+  workflow_call:
+    inputs:
+      instance_name:
+        required: true
+        type: string
+      product_type:
+        required: true
+        type: string
+      product_version:
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Show inputs (replace with real deploy steps)
+        run: |
+          echo "Instance: ${{ inputs.instance_name }}"
+          echo "Product:  ${{ inputs.product_type }}"
+          echo "Version:  ${{ inputs.product_version }}"
+

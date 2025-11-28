@@ -1,0 +1,111 @@
+name: Deploy Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      instance:
+        description: "Instance name"
+        type: choice
+        required: true
+        default: dev
+        options:
+          - dev
+          - staging
+          - prod
+
+      product_type:
+        description: "Product to deploy"
+        type: choice
+        required: true
+        default: All
+        options:
+          - All
+          - Product1
+          - Product2
+
+      product_versions:
+        description: >
+          Product version:
+          - "latest" for latest
+          - "1.22" for a single product
+          - "Product1:1.22,Product2:1.23" when Product Type = All
+        type: string
+        required: true
+        default: latest
+
+jobs:
+  build-matrix:
+    name: Build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - id: build
+        shell: bash
+        run: |
+          instance="${{ github.event.inputs.instance }}"
+          product_type="${{ github.event.inputs.product_type }}"
+          versions_input="${{ github.event.inputs.product_versions }}"
+
+          ALL_PRODUCTS=("Product1" "Product2")
+
+          declare -A version_map
+
+          if [[ "$versions_input" == *":"* ]]; then
+            IFS=',' read -ra PAIRS <<< "$versions_input"
+            for p in "${PAIRS[@]}"; do
+              key="${p%%:*}"
+              val="${p##*:}"
+              key="$(echo "$key" | xargs)"
+              val="$(echo "$val" | xargs)"
+              [[ -n "$key" && -n "$val" ]] && version_map["$key"]="$val"
+            done
+          fi
+
+          json="["
+
+          if [[ "$product_type" == "All" ]]; then
+            for prod in "${ALL_PRODUCTS[@]}"; do
+              v="${version_map[$prod]}"
+
+              if [[ -z "$v" ]]; then
+                if [[ "$versions_input" == "latest" ]] || [[ -z "$versions_input" ]]; then
+                  v="latest"
+                else
+                  v="latest"
+                fi
+              fi
+
+              json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
+            done
+          else
+            v="${versions_input}"
+
+            if [[ "${#version_map[@]}" -gt 0 ]]; then
+              if [[ -n "${version_map[$product_type]}" ]]; then
+                v="${version_map[$product_type]}"
+              fi
+            fi
+
+            if [[ -z "$v" ]]; then
+              v="latest"
+            fi
+
+            json+="{\"instance\":\"$instance\",\"product\":\"$product_type\",\"version\":\"$v\"},"
+          fi
+
+          json="${json%,}]"
+
+          echo "Matrix JSON: $json"
+          echo "matrix=$json" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy via reusable workflow
+    needs: build-matrix
+    strategy:
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+    uses: ./.github/workflows/deploy-reusable.yml
+    with:
+      instance_name:   ${{ matrix.instance }}
+      product_type:    ${{ matrix.product }}
+      product_version: ${{ matrix.version }}
