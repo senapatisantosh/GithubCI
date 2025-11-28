@@ -38,7 +38,8 @@ jobs:
     name: Deploy via reusable workflow
     strategy:
       matrix:
-        instance: [ ${{ github.event.inputs.instance }} ]
+        instance:
+          - ${{ github.event.inputs.instance }}
     uses: ./.github/workflows/deploy-reusable.yml
     with:
       instance_name:    ${{ matrix.instance }}
