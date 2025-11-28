@@ -103,7 +103,8 @@ jobs:
     name: Deploy via reusable workflow
     needs: build-matrix
     strategy:
-      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+      matrix:
+        include: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
     uses: ./.github/workflows/deploy-reusable.yml
     with:
       instance_name:   ${{ matrix.instance }}
