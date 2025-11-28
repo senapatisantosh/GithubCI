@@ -33,14 +33,14 @@ jobs:
         if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product1' }}
         uses: ./.github/actions/ProductDeployment
         with:
-          product:         ${{ env.PRODUCT_TYPE }}
+          product:         'Product1'
           product_versions: ${{ env.VERSIONS_INPUT }}
 
       - name: Deploy Product2 (resolve + echo + deploy)
         if: ${{ env.PRODUCT_TYPE == 'All' || env.PRODUCT_TYPE == 'Product2' }}
         uses: ./.github/actions/ProductDeployment
         with:
-          product:         ${{ env.PRODUCT_TYPE }}
+          product:         'Product2'
           product_versions: ${{ env.VERSIONS_INPUT }}
 
       - name: Common post-steps
