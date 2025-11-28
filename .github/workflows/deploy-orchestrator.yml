@@ -51,42 +51,40 @@ jobs:
 
           declare -A version_map
 
+          is_kv=false
           if [[ "$versions_input" == *":"* ]]; then
+            is_kv=true
             IFS=',' read -ra PAIRS <<< "$versions_input"
             for p in "${PAIRS[@]}"; do
               key="${p%%:*}"
               val="${p##*:}"
               key="$(echo "$key" | xargs)"
               val="$(echo "$val" | xargs)"
-              [[ -n "$key" && -n "$val" ]] && version_map[""$key""]="$val"
+              [[ -n "$key" && -n "$val" ]] && version_map["$key"]="$val"
             done
           fi
 
           json="["
 
           if [[ "$product_type" == "All" ]]; then
-            for prod in "${ALL_PRODUCTS[@]}"; do
-              v=""
-
-              if [[ "$versions_input" == *":"* ]]; then
+            if [[ "$is_kv" == true ]]; then
+              for prod in "${!version_map[@]}"; do
                 v="${version_map[$prod]}"
-                if [[ -z "$v" ]]; then
-                  v="latest"
-                fi
-              else
+                json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
+              done
+            else
+              for prod in "${ALL_PRODUCTS[@]}"; do
                 if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
                   v="latest"
                 else
-                  v="$versions_input"   # <- direct version for all products
+                  v="$versions_input"
                 fi
-              fi
-
-              json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
-            done
+                json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
+              done
+            fi
           else
             v=""
-
-            if [[ "$versions_input" == *":"* ]]; then
+            if [[ "$is_kv" == true ]]; then
               v="${version_map[$product_type]}"
               if [[ -z "$v" ]]; then
                 v="latest"
@@ -95,7 +93,7 @@ jobs:
               if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
                 v="latest"
               else
-                v="$versions_input"    # <- direct version for single product
+                v="$versions_input"
               fi
             fi
 
@@ -103,9 +101,7 @@ jobs:
           fi
 
           json="${json%,}]"
-
           echo "Matrix JSON: $json"
-          echo "matrix=$json" >> "$GITHUB_OUTPUT"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
 
   deploy:
