@@ -58,7 +58,7 @@ jobs:
               val="${p##*:}"
               key="$(echo "$key" | xargs)"
               val="$(echo "$val" | xargs)"
-              [[ -n "$key" && -n "$val" ]] && version_map["$key"]="$val"
+              [[ -n "$key" && -n "$val" ]] && version_map[""$key""]="$val"
             done
           fi
 
@@ -66,29 +66,37 @@ jobs:
 
           if [[ "$product_type" == "All" ]]; then
             for prod in "${ALL_PRODUCTS[@]}"; do
-              v="${version_map[$prod]}"
+              v=""
 
-              if [[ -z "$v" ]]; then
-                if [[ "$versions_input" == "latest" ]] || [[ -z "$versions_input" ]]; then
+              if [[ "$versions_input" == *":"* ]]; then
+                v="${version_map[$prod]}"
+                if [[ -z "$v" ]]; then
+                  v="latest"
+                fi
+              else
+                if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
                   v="latest"
                 else
-                  v="latest"
+                  v="$versions_input"   # <- direct version for all products
                 fi
               fi
 
               json+="{\"instance\":\"$instance\",\"product\":\"$prod\",\"version\":\"$v\"},"
             done
           else
-            v="${versions_input}"
+            v=""
 
-            if [[ "${#version_map[@]}" -gt 0 ]]; then
-              if [[ -n "${version_map[$product_type]}" ]]; then
-                v="${version_map[$product_type]}"
+            if [[ "$versions_input" == *":"* ]]; then
+              v="${version_map[$product_type]}"
+              if [[ -z "$v" ]]; then
+                v="latest"
               fi
-            fi
-
-            if [[ -z "$v" ]]; then
-              v="latest"
+            else
+              if [[ -z "$versions_input" || "$versions_input" == "latest" ]]; then
+                v="latest"
+              else
+                v="$versions_input"    # <- direct version for single product
+              fi
             fi
 
             json+="{\"instance\":\"$instance\",\"product\":\"$product_type\",\"version\":\"$v\"},"
@@ -97,6 +105,7 @@ jobs:
           json="${json%,}]"
 
           echo "Matrix JSON: $json"
+          echo "matrix=$json" >> "$GITHUB_OUTPUT"
           echo "matrix=$json" >> "$GITHUB_OUTPUT"
 
   deploy:
