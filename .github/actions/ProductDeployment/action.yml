@@ -1,0 +1,32 @@
+name: Resolve and echo product version
+description: Call ResolveVersion, echo the result, and expose it as output
+
+inputs:
+  product:
+    description: "Product name (e.g., Product1)"
+    required: true
+  product_versions:
+    description: "Same format as ResolveVersion product_versions"
+    required: true
+
+outputs:
+  version:
+    description: "Resolved version for the given product"
+    value: ${{ steps.resolve.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+
+
+    - name: Resolve version (inner action)
+      id: resolve
+      uses: ./.github/actions/ResolveVersion
+      with:
+        product:        ${{ inputs.product }}
+        versions_input: ${{ inputs.product_versions }}
+
+    - name: Echo resolved version
+      shell: bash
+      run: |
+        echo "Product: ${{ inputs.product }} - Resolved version: ${{ steps.resolve.outputs.version }}"
